@@ -1,0 +1,51 @@
+{
+  "namespace": "com.thoughtworks.schemas",
+  "type": "record",
+  "name": "Order",
+  "fields": [
+    {
+      "name": "id",
+      "type": "string"
+    },
+    {
+      "name": "customerId",
+      "type": "string"
+    },
+    {
+      "name": "timestamp",
+      "type": "string"
+    },
+    {
+      "name": "storeId",
+      "type": "string"
+    },
+    {
+      "name": "items",
+      "type": {
+        "type": "array",
+        "items": {
+          "type": "record",
+          "name": "OrderItem",
+          "fields": [
+            {
+              "name": "orderId",
+              "type": "string"
+            },
+            {
+              "name": "productId",
+              "type": "string"
+            },
+            {
+              "name": "quantity",
+              "type": "int"
+            },
+            {
+              "name": "discount",
+              "type": "double"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}
