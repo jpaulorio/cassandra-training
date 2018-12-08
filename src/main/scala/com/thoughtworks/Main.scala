@@ -7,8 +7,12 @@ import com.thoughtworks.dbutils.CassandraUtils
 
 object Main {
   def main(args: Array[String]): Unit = {
-
-    val session = CassandraUtils.getSession("127.0.0.1")
+    if (args.length == 0) {
+      println("Cluster address is required!")
+      return
+    }
+    val clusterAddress = args(0)
+    val session = CassandraUtils.getSession(clusterAddress, 9042)
     val keyspace = "de_training"
 
     //create db
@@ -46,6 +50,11 @@ object Main {
     val filter = Map("id" -> key1)
     val results = CassandraUtils.select("users", columns, filter, keyspace, session)
     results.foreach(x => println(x))
+
+    val agreement = session.getCluster.getMetadata.checkSchemaAgreement()
+
+    session.close()
+    session.getCluster.close()
 
     println("Application exited.")
   }

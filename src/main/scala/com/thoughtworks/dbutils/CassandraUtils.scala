@@ -1,6 +1,6 @@
 package com.thoughtworks.dbutils
 
-import com.datastax.driver.core.{Cluster, DataType, Row, Session}
+import com.datastax.driver.core._
 
 import scala.collection.mutable
 
@@ -14,9 +14,16 @@ object CassandraUtils {
          };""")
   }
 
-  def getSession(nodes: String): Session = {
+  def getKeyspaces(session:Session) = {
+    session.getCluster.getMetadata.getKeyspaces
+  }
+
+  def getSession(nodes: String, port:Integer): Session = {
+    val qo = new QueryOptions().setConsistencyLevel(ConsistencyLevel.ALL)
     val cluster = Cluster.builder()
       .addContactPoint(nodes)
+      .withPort(port)
+      //.withQueryOptions(qo)
       .build()
     cluster.connect()
   }
@@ -46,7 +53,9 @@ object CassandraUtils {
   def insert(tableName: String, data: Map[String, Any], keyspace: String, session: Session) = {
     val columnNamesStr = data.keys.mkString("(", ",", ")")
     val valuesStr = addQuotes(data.values).mkString("(", ",", ")")
-    session.execute(s"""INSERT INTO $keyspace.$tableName $columnNamesStr values $valuesStr""")
+    val s = new SimpleStatement(s"""INSERT INTO $keyspace.$tableName $columnNamesStr values $valuesStr""")
+    s.setConsistencyLevel(ConsistencyLevel.ALL)
+    session.execute(s)
   }
 
   def insert(tableName: String, data: List[Map[String, Any]], keyspace: String, session: Session): Unit = {
@@ -56,7 +65,9 @@ object CassandraUtils {
   def update(tableName: String, keys: List[String], data: Map[String, Any], keyspace: String, session: Session): Unit = {
     val keysStr = keys.map(x => s"$x = ${addQuotes(data(x))}").mkString(" AND ")
     val valuesStr = data.filter(x => !keys.contains(x._1)).map(x => s"${x._1} = ${addQuotes(x._2)}").mkString(", ")
-    session.execute(s"""UPDATE $keyspace.$tableName SET $valuesStr WHERE $keysStr""")
+    val s = new SimpleStatement(s"""UPDATE $keyspace.$tableName SET $valuesStr WHERE $keysStr""")
+    s.setConsistencyLevel(ConsistencyLevel.ALL)
+    session.execute(s)
   }
 
   def update(tableName: String, keys: List[String], data: List[Map[String, Any]], keyspace: String,
@@ -76,7 +87,9 @@ object CassandraUtils {
   def select(tableName: String, columns: List[String], filter: Map[String, Any], keyspace: String, session: Session) = {
     val columnsStr = columns.mkString(",")
     val filterStr = filter.map(x => s"${x._1} = ${addQuotes(x._2)}").mkString(" AND ")
-    val result = session.execute(s"SELECT $columnsStr FROM $keyspace.$tableName WHERE $filterStr")
+    val s = new SimpleStatement(s"SELECT $columnsStr FROM $keyspace.$tableName WHERE $filterStr")
+    s.setConsistencyLevel(ConsistencyLevel.ONE)
+    val result = session.execute(s)
     val results: mutable.MutableList[Map[String, Any]] = mutable.MutableList()
     result.forEach(row => results += columns.map(x => x -> getValue(row, x)).toMap)
     results
